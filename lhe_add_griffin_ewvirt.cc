@@ -1061,9 +1061,9 @@ static bool ensure_header_weight_line(vector<string>& output_lines, const string
 
 static void print_usage() {
   cerr << "Usage:\n"
-       << "  lhe_add_griffin_ewvirt --input in.lhe --output out.lhe --card ewvirt_card.dat\\n"
+       << "  zewgt --input in.lhe --output out.lhe --card ewvirt_card.dat\\n"
        << "      [--flavreglist FlavRegList] [--mode nlo|nnlo] [--scheme alpha|gmu]\\n"
-       << "      [--weight-id ewvirt_griffin] [--weight-desc 'GRIFFIN EW virtual']\\n"
+       << "      [--weight-id zewgt_griffin] [--weight-desc 'ZEWGT GRIFFIN EW virtual']\\n"
        << "      [--skip-unresolved]\n";
 }
 
@@ -1076,8 +1076,8 @@ int main(int argc, char** argv) {
   string flavreg_path;
   string mode_override;
   string scheme_override;
-  string weight_id = "ewvirt_griffin";
-  string weight_desc = "GRIFFIN EW virtual";
+  string weight_id = "zewgt_griffin";
+  string weight_desc = "ZEWGT GRIFFIN EW virtual";
   bool strict = true;
 
   for (int i = 1; i < argc; ++i) {

@@ -1,4 +1,4 @@
-# LHE EW Virtual Reweighter (GRIFFIN)
+# zewgt
 
 A command-line reweighter for neutral Drell-Yan LHE event files using GRIFFIN electroweak virtual corrections. It reads events from an input LHE file, reconstructs the underlying `qqbar -> Z` Born projection (using `# uub` when available, otherwise `#rwgt` + `FlavRegList` or incoming-parton fallback), computes an EW virtual weight per event, and writes the result into the output LHE as an additional weight entry.
 
@@ -17,9 +17,9 @@ cmake --build build -j
 Run:
 
 ```bash
-./build/lhe_add_griffin_ewvirt \
+./build/zewgt \
   --input pwgevents.lhe \
-  --output pwgevents_ewvirt.lhe \
+  --output pwgevents_zewgt.lhe \
   --card /path/to/GRIFFIN/examples/ewvirt_card.dat \
   --flavreglist /path/to/POWHEG-BOX-V2/Zj/ZjMiNNLO/suggested-run/FlavRegList
 ```
