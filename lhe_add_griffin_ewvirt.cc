@@ -295,6 +295,8 @@ class GriffinWeightComputer {
     if (mode_.empty()) mode_ = "nlo";
     if (scheme_.empty()) scheme_ = "alpha";
 
+    // Select the SM input scheme used internally by GRIFFIN.
+    // This controls how EW parameters are interpreted before building amplitudes.
     if (scheme_ == "gmu") {
       unique_ptr<SMvalGmu> inp(new SMvalGmu());
       apply_common_inputs(*inp, card, false);
@@ -320,6 +322,8 @@ class GriffinWeightComputer {
       return numeric_limits<double>::quiet_NaN();
     }
 
+    // Build the LO reference amplitude for the projected Born point
+    // (initial/final fermion type + shat + cos(theta*)).
     FA_SMLO fai_lo(intype, *input_), faf_lo(outtype, *input_);
     SW_SMLO swi_lo(intype, *input_), swf_lo(outtype, *input_);
     matel mlo(intype, outtype, VEC, VEC, fai_lo, faf_lo, swi_lo, swf_lo, shat, costh,
@@ -327,6 +331,8 @@ class GriffinWeightComputer {
     double xsec_lo = unpolarized_xsec(mlo, costh);
     if (xsec_lo == 0.0) return numeric_limits<double>::quiet_NaN();
 
+    // Rebuild the same amplitude with higher-order EW form factors from GRIFFIN.
+    // FA_* and SW_* provide corrected fermion-vertex/propagator ingredients.
     double xsec_corr = 0.0;
     if (mode_ == "nlo") {
       FA_SMNLO fai(intype, *input_), faf(outtype, *input_);
@@ -341,6 +347,7 @@ class GriffinWeightComputer {
       xsec_corr = unpolarized_xsec(mnnlo, costh);
     }
 
+    // Event reweighting factor applied to the original LHE event weight.
     return xsec_corr / xsec_lo;
   }
 
@@ -408,6 +415,10 @@ class FlavRegMap {
   }
 
   bool rwgt_to_incoming(int rwgt_type, int rwgt_index, int& f1, int& f2) const {
+    // This is where NLO vs NNLO-like projection is distinguished for #rwgt events:
+    //   type=1   -> NLO: rwgt_index already labels a uborn channel.
+    //   type=2/3 -> NNLO-like real/subtraction channels: rwgt_index is ALR and must
+    //               first be mapped to the corresponding uborn channel.
     if (rwgt_type == 1) {
       return uborn_incoming(rwgt_index, f1, f2);
     }
@@ -742,6 +753,8 @@ static bool parse_rwgt_line(const string& line, int& type, int& index) {
 }
 
 static bool parse_uub_line(const string& line, UubData& uub) {
+  // POWHEG (Zj/ZjMiNNLO) may store projected Born information in "# uub" comments:
+  // p1/p2 incoming partons, p3/p4 leptons, and flav[] PDG IDs.
   string s = ltrim(line);
   if (s.rfind("# uub", 0) != 0) return false;
 
@@ -839,6 +852,9 @@ static bool build_projection(const EventInfo& ev, const FlavRegMap* fmap, Projec
   // 1) exact "# uub" kinematics from POWHEG comments in the event block;
   // 2) if missing, incoming flavors from #rwgt + --flavreglist mapping;
   // 3) last resort, incoming status==-1 partons in the LHE record.
+  // Output projection fed to GRIFFIN:
+  //   intype/outtype -> fermion species, shat -> Born invariant mass^2,
+  //   costh -> Born scattering angle.
   prj = Projection();
 
   bool have_uub = ev.uub.has_p1 && ev.uub.has_p2 && ev.uub.has_p3 && ev.uub.has_p4
@@ -852,7 +868,8 @@ static bool build_projection(const EventInfo& ev, const FlavRegMap* fmap, Projec
     Vec4 q = ev.uub.p1 + ev.uub.p2;
     double shat = q.m2();
 
-    // Exact projection path: use POWHEG's stored Born momenta/flavors from "# uub".
+    // Exact projection path: use POWHEG's stored Born momenta/flavors from "# uub"
+    // to reconstruct shat and cos(theta*) directly in the partonic CM frame.
     if (qa.ok && intype != 0 && shat > 0.0 && costh_from_uub(ev.uub, qa, costh, outtype)
         && outtype != 0) {
       prj.ok = true;
@@ -875,8 +892,8 @@ static bool build_projection(const EventInfo& ev, const FlavRegMap* fmap, Projec
   int f1 = 0, f2 = 0;
   bool from_rwgt = false;
   if (fmap && ev.rwgt_type > 0 && ev.rwgt_index > 0) {
-    // "Taken from" external FlavRegList: map this #rwgt channel back to its uborn
-    // incoming quark flavors when possible.
+    // Secondary path: map POWHEG #rwgt channel indices back to underlying Born
+    // incoming flavors using FlavRegList (NLO/NNLO-like split handled in rwgt_to_incoming()).
     if (fmap->rwgt_to_incoming(ev.rwgt_type, ev.rwgt_index, f1, f2)) from_rwgt = true;
   }
 
@@ -909,7 +926,8 @@ static bool build_projection(const EventInfo& ev, const FlavRegMap* fmap, Projec
   }
 
   double costh = numeric_limits<double>::quiet_NaN();
-  // Approximate projection path: infer Born scattering angle from final-state leptons.
+  // Approximate projection path: infer Born scattering angle from final-state
+  // leptons in Collins-Soper frame, with quark direction fixed by inferred beam side.
   if (!costh_collins_soper(lp.lminus, lp.lplus, qa.quark_from_beam1, costh)) {
     prj.detail = "costh_collins_soper_failed";
     return false;
@@ -1195,6 +1213,7 @@ int main(int argc, char** argv) {
     if (prj.source == "rwgt_flavreg") stats.n_rwgt_flavreg++;
     if (prj.source == "incoming") stats.n_incoming++;
 
+    // Evaluate GRIFFIN virtual EW factor on the reconstructed Born point.
     double w = calculator.compute_weight(prj.intype, prj.outtype, prj.shat, prj.costh);
     if (!isfinite(w)) {
       cerr << "Non-finite EW virtual weight at event " << stats.nevents << "\n";
