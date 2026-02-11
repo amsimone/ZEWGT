@@ -1,6 +1,6 @@
 # zewgt
 
-A command-line reweighter for neutral Drell-Yan LHE event files using GRIFFIN electroweak virtual corrections. It reads events from an input LHE file, reconstructs the underlying `qqbar -> Z` Born projection (using `# uub` when available, otherwise `#rwgt` + `FlavRegList` or incoming-parton fallback), computes an EW virtual weight per event, and writes the result into the output LHE as an additional weight entry.
+A command-line reweighter for neutral Drell-Yan Powheg NLO or MiNNLO LHE event files using GRIFFIN electroweak virtual corrections. It reads events from an input LHE file, reconstructs the underlying `qqbar -> Z` Born projection (using `# uub` when available, otherwise `#rwgt` + `FlavRegList` or incoming-parton fallback), computes an EW virtual weight per event, and writes the result into the output LHE as an additional weight entry.
 
 Requirements:
 
